@@ -46,6 +46,30 @@
 
             <h2>COVID-19 cases normalized</h2>
             <p class="lead">The following data is normalized to the first day a region hit 100 cases.</p>
+
+            <div id="source-selector"
+                class="btn-group btn-group-toggle"
+                data-toggle="buttons">
+                <label class="btn btn-secondary active">
+                    <input type="radio"
+                        name="source"
+                        id="source-isaac-lin"
+                        value="isaac-lin"
+                        checked> Isaac Lin
+                </label>
+                <label class="btn btn-secondary">
+                    <input type="radio"
+                        name="source"
+                        id="source-john-hopkins-csse-confirmed"
+                        value="john-hopkins-csse-confirmed"> John Hopkins CSSE confirmed cases
+                </label>
+                <label class="btn btn-secondary">
+                    <input type="radio"
+                        name="source"
+                        id="source-john-hopkins-csse-deaths"
+                        value="john-hopkins-csse-deaths"> John Hopkins CSSE deaths
+                </label>
+            </div>
         </div>
         <div class="card">
             <div class="card-body ">
@@ -60,7 +84,11 @@
 
         <footer class="my-5 pt-5 text-muted text-center text-small">
             <ul class="list-inline">
-                <li class="list-inline-item"><a href="https://github.com/BlankerL/DXY-COVID-19-Data">Data source</a>
+                <li class="list-inline-item"><b>Data sources</b> |
+                </li>
+                <li class="list-inline-item"><a href="https://github.com/BlankerL/DXY-COVID-19-Data">Isaac Lin</a>
+                </li>
+                <li class="list-inline-item"><a href="https://github.com/CSSEGISandData/COVID-19">John Hopkins CSSE</a>
                 </li>
             </ul>
         </footer>
