@@ -117,8 +117,8 @@ Highcharts.Point.prototype.tooltipFormatter = function (useHeader) {
     var point = this;
 
     //var cFlatteningNote = oPoint.flattened && oPoint.seriesindex == 0 ? '<br />! This value has been altered by the error correction mechanism !' : '';
-
-    return "<b>" + point.region.country + " </b> | Day " + point.daysSinceStart + "<br/>" + point.y + " confirmed cases<br />Offset: " + point.region.dayDiffToLowest + " days";
+    var realDate = point.real.getFullYear() + '/' + ("0" + (point.real.getMonth() + 1)).slice(-2) + '/' + ("0" + point.real.getDate()).slice(-2);
+    return "<b>" + point.region.country + " </b> | Day " + point.daysSinceStart + "<br/>" + point.y + " confirmed cases<br />Offset: " + point.region.dayDiffToLowest + " days<br/>" + realDate;
 }
 
 
