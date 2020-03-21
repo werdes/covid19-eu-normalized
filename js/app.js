@@ -1,12 +1,12 @@
-$(function () {
-    loadIsaacLin(displayData);
-});
+const THRESHOLD_CASES = 100;
+const THRESHOLD_DEATHS = 1;
 
-var _ENUM_SOURCES = {
-    ISAAC_LIN: 0,
-    JOHN_HOPKINS_CSSE_CONFIRMED: 1,
-    JOHN_HOPKINS_CSSE_DEATHS: 2,
-}
+$(function () {
+    $('#threshold-cases').text(THRESHOLD_CASES);
+    $('#threshold-deaths').text(THRESHOLD_DEATHS);
+
+    loadJHCSSEConfirmed(displayData);
+});
 
 $('input[name=source]').change(function () {
     $('#loading-indicator').removeClass("d-none");
@@ -25,7 +25,7 @@ $('input[name=source]').change(function () {
 });
 
 
-function displayData(regions, lowestDate) {
+function displayData(regions, lowestDate, dataType) {
     var series = new Array();
     Object.keys(regions).forEach(function (country) {
         var region = regions[country];
@@ -43,6 +43,7 @@ function displayData(regions, lowestDate) {
                     real: new Date(day),
                     daysSinceStart: daysSinceStart,
                     region: region,
+                    dataType: dataType,
                     y: region.byDay[day]
                 });
             });
@@ -51,25 +52,22 @@ function displayData(regions, lowestDate) {
                 name: country,
                 data: points
             });
-
-            //console.log(country + " done");
         }
     });
     $('#loading-indicator').addClass("d-none");
-    // $('body').append("<textarea>" + JSON.stringify(regions) + "</textarea>");
 
     Highcharts.chart('chart', getChartOptions(lowestDate, series));
 }
 
 function loadJHCSSEConfirmed(cb) {
-    loadJHCSSE(cb, "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv");
+    loadJHCSSE(cb, "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv", "cases", THRESHOLD_CASES);
 }
 
 function loadJHCSSEDeaths(cb) {
-    loadJHCSSE(cb, "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv");
+    loadJHCSSE(cb, "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv", "deaths", THRESHOLD_DEATHS);
 }
 
-function loadJHCSSE(cb, url) {
+function loadJHCSSE(cb, url, dataType, threshold) {
     var lowestDate = null;
     var dateRegex = "([0-9]{1,2}\/[0-9]{1,2}\/[0-9]{1,2})\\w+";
     var regions = {};
@@ -78,13 +76,10 @@ function loadJHCSSE(cb, url) {
         url: url,
         cache: true,
         complete: function (data) {
-            var lines = data.responseText.replace('\r', '').split('\n');
-
+            var cellData = csvToArray(data.responseText);
             var dateIdxs = {};
-            var headline = lines[0];
 
-            var headlineCells = headline.split(',');
-
+            var headlineCells = cellData[0];
 
             headlineCells.forEach(function (headlineCell, headlineCellIdx) {
                 if (headlineCell.match(dateRegex)) {
@@ -95,9 +90,9 @@ function loadJHCSSE(cb, url) {
             });
 
 
-            lines.shift();
-            lines.forEach(function (line, idx) {
-                var cells = line.split(',');
+            cellData.shift();
+            cellData.forEach(function (cells, idx) {
+
                 var countryName = cells[1];
                 if (!regions[countryName]) {
                     regions[countryName] = {
@@ -122,7 +117,7 @@ function loadJHCSSE(cb, url) {
 
                     region.byDay[date] += value;
 
-                    if (value >= 100) {
+                    if (value >= threshold) {
                         if (!region.reachedThreshold)
                             region.reachedThresholdAt = dateObj;
                         region.reachedThreshold = true;
@@ -147,7 +142,7 @@ function loadJHCSSE(cb, url) {
             });
 
 
-            $('body').append("<textarea>" + JSON.stringify(regions) + "</textarea>");
+            // $('body').append("<textarea>" + JSON.stringify(regions) + "</textarea>");
 
             cb(regions, lowestDate);
         }
@@ -185,7 +180,7 @@ function loadIsaacLin(cb) {
 
                     region.snapshots.push(regionSnapshot);
 
-                    if (regionSnapshot.confirmedCount >= 100) {
+                    if (regionSnapshot.confirmedCount >= THRESHOLD_CASES) {
                         region.reachedThreshold = true;
                         if (region.reachedThresholdAt == null ||
                             region.reachedThresholdAt > new Date(regionSnapshot.updateTime)) {
@@ -233,18 +228,45 @@ function loadIsaacLin(cb) {
                     region.snapshots = null;
                 }
             });
-            cb(regions, lowestDate);
+            cb(regions, lowestDate, "cases");
         }
     });
 }
 
 Highcharts.Point.prototype.tooltipFormatter = function (useHeader) {
     var point = this;
+    var dataType = point.dataType == "cases" ? "confirmed cases" : "deaths";
     var realDate = point.real.getFullYear() + '/' + ("0" + (point.real.getMonth() + 1)).slice(-2) + '/' + ("0" + point.real.getDate()).slice(-2);
-    return "<b>" + point.region.country + " </b> | Day " + point.daysSinceStart + "<br/>" + point.y + " confirmed cases<br />Offset: " + point.region.dayDiffToLowest + " days<br/>" + realDate;
+    return "<b>" + point.region.country + " </b> | Day " + point.daysSinceStart + "<br/>" + point.y + " " + dataType + "<br />Offset: " + point.region.dayDiffToLowest + " days<br/>" + realDate;
 }
 
+// Return array of string values, or NULL if CSV string not well formed.
+function csvToArray(text) {
+    var re_value = /(".*?"|[^",]+)(?=\s*,|\s*$)/g;
+    // Return NULL if input string is not well formed CSV string.
+    var r = []; // Initialize array to receive values.
+    var lines = text.split('\r\n');
 
+    lines.forEach(function (line) {
+        var a = [];
+        if (line[0] == ',') a.push('');
+        line.replace(re_value, // "Walk" the string using replace with callback.
+            function (m0, m1, m2, m3) {
+                // Remove backslash from \' in single quoted values.
+                if (m1 !== undefined) a.push(m1.replace(/\\'/g, "'"));
+                // Remove backslash from \" in double quoted values.
+                else if (m2 !== undefined) a.push(m2.replace(/\\"/g, '"'));
+                else if (m3 !== undefined) a.push(m3);
+                return ''; // Return empty string.
+            });
+        // Handle special case of empty last value.
+        if (/,\s*$/.test(text)) a.push('');
+
+        r.push(a);
+    });
+
+    return r;
+};
 
 function getChartOptions(lowestDate, series) {
     return {

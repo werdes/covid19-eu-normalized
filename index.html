@@ -45,23 +45,25 @@
         <div class="py-5 text-center">
 
             <h2>COVID-19 cases normalized</h2>
-            <p class="lead">The following data is normalized to the first day a region hit 100 cases.</p>
+            <p class="lead">The following data is normalized to the first day a region hit <span
+                    id="threshold-cases"></span> cases or <span id="threshold-deaths"></span> deaths.</p>
 
             <div id="source-selector"
                 class="btn-group btn-group-toggle"
                 data-toggle="buttons">
-                <label class="btn btn-secondary active">
+                <!-- <label class="btn btn-secondary active">
                     <input type="radio"
                         name="source"
                         id="source-isaac-lin"
                         value="isaac-lin"
                         checked> Isaac Lin
-                </label>
+                </label> -->
                 <label class="btn btn-secondary">
                     <input type="radio"
                         name="source"
                         id="source-john-hopkins-csse-confirmed"
-                        value="john-hopkins-csse-confirmed"> John Hopkins CSSE confirmed cases
+                        value="john-hopkins-csse-confirmed"
+                        checked> John Hopkins CSSE confirmed cases
                 </label>
                 <label class="btn btn-secondary">
                     <input type="radio"
