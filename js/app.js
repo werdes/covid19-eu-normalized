@@ -144,7 +144,7 @@ function loadJHCSSE(cb, url, dataType, threshold) {
 
             // $('body').append("<textarea>" + JSON.stringify(regions) + "</textarea>");
 
-            cb(regions, lowestDate);
+            cb(regions, lowestDate, dataType);
         }
     });
 }
