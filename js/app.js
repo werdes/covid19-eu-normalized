@@ -245,7 +245,7 @@ function csvToArray(text) {
     var re_value = /(".*?"|[^",]+)(?=\s*,|\s*$)/g;
     // Return NULL if input string is not well formed CSV string.
     var r = []; // Initialize array to receive values.
-    var lines = text.split('\r\n');
+    var lines = text.replace('\r', '').split('\n');
 
     lines.forEach(function (line) {
         var a = [];
