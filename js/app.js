@@ -1,17 +1,27 @@
-const THRESHOLD_CASES = 100;
-const THRESHOLD_DEATHS = 1;
+const THRESHOLD_CASES = 50;
+const THRESHOLD_DEATHS = 10;
 
 $(function () {
     $('#threshold-cases').text(THRESHOLD_CASES);
     $('#threshold-deaths').text(THRESHOLD_DEATHS);
+    $('#field-threshold-cases').val(THRESHOLD_CASES);
+    $('#field-threshold-deaths').val(THRESHOLD_DEATHS);
 
     loadJHCSSEConfirmed(displayData);
 });
 
 $('input[name=source]').change(function () {
+    load();
+});
+
+$('.threshold-option').change(function () {
+    load();
+});
+
+function load() {
     $('#loading-indicator').removeClass("d-none");
 
-    switch ($(this).val()) {
+    switch ($('input[name=source]:checked').val()) {
         case 'isaac-lin':
             loadIsaacLin(displayData);
             break;
@@ -22,13 +32,24 @@ $('input[name=source]').change(function () {
             loadJHCSSEDeaths(displayData);
             break;
     }
-});
-
+}
 
 function displayData(regions, lowestDate, dataType) {
     var series = new Array();
+
+
+    var regionsSorted = [];
     Object.keys(regions).forEach(function (country) {
-        var region = regions[country];
+        regionsSorted.push(regions[country]);
+    });
+
+    regionsSorted.sort(function (a, b) {
+        return b.fullCaseCount - a.fullCaseCount;
+    });
+
+    //Object.keys(regionsSorted).forEach(function (country) {
+    regionsSorted.forEach(function (region, regionIdx) {
+        //var region = regions[country];
 
         if (region.reachedThreshold) {
 
@@ -49,7 +70,7 @@ function displayData(regions, lowestDate, dataType) {
             });
 
             series.push({
-                name: country,
+                name: region.country,
                 data: points
             });
         }
@@ -60,11 +81,14 @@ function displayData(regions, lowestDate, dataType) {
 }
 
 function loadJHCSSEConfirmed(cb) {
-    loadJHCSSE(cb, "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv", "cases", THRESHOLD_CASES);
+    var threshold = parseInt($('#field-threshold-cases').val());
+
+    loadJHCSSE(cb, "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv", "cases", threshold);
 }
 
 function loadJHCSSEDeaths(cb) {
-    loadJHCSSE(cb, "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv", "deaths", THRESHOLD_DEATHS);
+    var threshold = parseInt($('#field-threshold-deaths').val());
+    loadJHCSSE(cb, "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv", "deaths", threshold);
 }
 
 function loadJHCSSE(cb, url, dataType, threshold) {
@@ -151,6 +175,7 @@ function loadJHCSSE(cb, url, dataType, threshold) {
 
 function loadIsaacLin(cb) {
     var lowestDate = null;
+    var threshold = parseInt($('#field-threshold-cases').val());
     $.get({
         url: "https://raw.githubusercontent.com/BlankerL/DXY-COVID-19-Data/master/json/DXYArea-TimeSeries.json",
         cache: true,
@@ -180,7 +205,7 @@ function loadIsaacLin(cb) {
 
                     region.snapshots.push(regionSnapshot);
 
-                    if (regionSnapshot.confirmedCount >= THRESHOLD_CASES) {
+                    if (regionSnapshot.confirmedCount >= threshold) {
                         region.reachedThreshold = true;
                         if (region.reachedThresholdAt == null ||
                             region.reachedThresholdAt > new Date(regionSnapshot.updateTime)) {

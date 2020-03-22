@@ -1,2 +1,2 @@
-@media (min-width: 1900px){.container{max-width:1860px}}#chart{height:600px}.lh-condensed{line-height:1.25}
+@media (min-width: 1900px){.container{max-width:1860px}}div.input-group{max-width:300px}#chart{height:600px}.lh-condensed{line-height:1.25}div.input-group-prepend.option-prepend>span{min-width:220px}
 /*# sourceMappingURL=app.min.css.map */
