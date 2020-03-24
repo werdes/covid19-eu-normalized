@@ -1,13 +1,12 @@
 const THRESHOLD_CASES = 50;
 const THRESHOLD_DEATHS = 10;
+const DAYS_BEFORE_THRESHOLD = 10;
 
 $(function () {
-    $('#threshold-cases').text(THRESHOLD_CASES);
-    $('#threshold-deaths').text(THRESHOLD_DEATHS);
     $('#field-threshold-cases').val(THRESHOLD_CASES);
     $('#field-threshold-deaths').val(THRESHOLD_DEATHS);
-
-    loadJHCSSEConfirmed(displayData);
+    $('#field-days-before-threshold').val(DAYS_BEFORE_THRESHOLD);
+    load();
 });
 
 $('input[name=source]').change(function () {
@@ -21,10 +20,11 @@ $('.threshold-option').change(function () {
 function load() {
     $('#loading-indicator').removeClass("d-none");
 
+    $('#threshold-cases').text($('#field-threshold-cases').val());
+    $('#threshold-deaths').text($('#field-threshold-deaths').val());
+    $('#days-before-threshold').text($('#field-days-before-threshold').val());
+
     switch ($('input[name=source]:checked').val()) {
-        case 'isaac-lin':
-            loadIsaacLin(displayData);
-            break;
         case 'john-hopkins-csse-confirmed':
             loadJHCSSEConfirmed(displayData);
             break;
@@ -36,9 +36,13 @@ function load() {
 
 function displayData(regions, lowestDate, dataType) {
     var series = new Array();
-
-
+    var minDate = new Date();
     var regionsSorted = [];
+    var daysBeforeThreshold = parseInt($('#field-days-before-threshold').val());
+
+    minDate.setDate(lowestDate.getDate() - daysBeforeThreshold);
+    console.log(lowestDate + " -> " + minDate);
+
     Object.keys(regions).forEach(function (country) {
         regionsSorted.push(regions[country]);
     });
@@ -54,19 +58,28 @@ function displayData(regions, lowestDate, dataType) {
         if (region.reachedThreshold) {
 
             var points = new Array();
+            var lastValue = null;
             Object.keys(region.byDay).forEach(function (day) {
                 var daysSinceStart = 1 + Math.round(((new Date(day)) - region.reachedThresholdAt) / (1000 * 60 * 60 * 24));
 
                 var dateCorrected = new Date(day);
                 dateCorrected.setDate(dateCorrected.getDate() - region.dayDiffToLowest);
-                points.push({
-                    x: dateCorrected,
-                    real: new Date(day),
-                    daysSinceStart: daysSinceStart,
-                    region: region,
-                    dataType: dataType,
-                    y: region.byDay[day]
-                });
+
+                var addedFromLast = lastValue == null ? null : region.byDay[day] - lastValue;
+
+                if (dateCorrected >= minDate) {
+                    points.push({
+                        x: dateCorrected,
+                        real: new Date(day),
+                        daysSinceStart: daysSinceStart,
+                        region: region,
+                        dataType: dataType,
+                        y: region.byDay[day],
+                        addedFromLast: addedFromLast
+                    });
+                }
+
+                lastValue = region.byDay[day];
             });
 
             series.push({
@@ -83,12 +96,13 @@ function displayData(regions, lowestDate, dataType) {
 function loadJHCSSEConfirmed(cb) {
     var threshold = parseInt($('#field-threshold-cases').val());
 
-    loadJHCSSE(cb, "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv", "cases", threshold);
+    loadJHCSSE(cb, "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv", "cases", threshold);
 }
 
 function loadJHCSSEDeaths(cb) {
     var threshold = parseInt($('#field-threshold-deaths').val());
-    loadJHCSSE(cb, "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv", "deaths", threshold);
+
+    loadJHCSSE(cb, "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv", "deaths", threshold);
 }
 
 function loadJHCSSE(cb, url, dataType, threshold) {
@@ -128,35 +142,44 @@ function loadJHCSSE(cb, url, dataType, threshold) {
                         byDay: {}
                     }
                 }
+
                 var region = regions[countryName];
 
+                // if (region.country != "France") return;
 
                 Object.keys(dateIdxs).forEach(function (date) {
                     var lineDateIdx = dateIdxs[date];
                     var value = parseInt(cells[lineDateIdx]);
-                    var dateObj = new Date(date);
 
                     if (!region.byDay[date])
                         region.byDay[date] = 0;
 
                     region.byDay[date] += value;
+                });
+            });
 
-                    if (value >= threshold) {
-                        if (!region.reachedThreshold)
+            Object.keys(regions).forEach(function (countryName) {
+                var region = regions[countryName];
+                Object.keys(region.byDay).forEach(function (date) {
+                    var dateObj = new Date(date);
+
+                    if (region.byDay[date] >= threshold) {
+                        if (!region.reachedThreshold) {
                             region.reachedThresholdAt = dateObj;
+                            console.log(region.country + " reached threshold " + threshold + " with " + region.byDay[date] + " at " + dateObj);
+                        }
                         region.reachedThreshold = true;
 
-                        if (value > region.fullCaseCount) {
-                            region.fullCaseCount = value;
+                        if (region.byDay[date] > region.fullCaseCount) {
+                            region.fullCaseCount = region.byDay[date];
+                        }
+                        if (lowestDate == null ||
+                            lowestDate < dateObj) {
+                            lowestDate = dateObj;
                         }
 
-
                     }
 
-                    if (lowestDate == null ||
-                        lowestDate > dateObj) {
-                        lowestDate = dateObj;
-                    }
                 });
             });
 
@@ -165,95 +188,7 @@ function loadJHCSSE(cb, url, dataType, threshold) {
                 region.dayDiffToLowest = Math.round((region.reachedThresholdAt - lowestDate) / (1000 * 60 * 60 * 24));
             });
 
-
-            // $('body').append("<textarea>" + JSON.stringify(regions) + "</textarea>");
-
             cb(regions, lowestDate, dataType);
-        }
-    });
-}
-
-function loadIsaacLin(cb) {
-    var lowestDate = null;
-    var threshold = parseInt($('#field-threshold-cases').val());
-    $.get({
-        url: "https://raw.githubusercontent.com/BlankerL/DXY-COVID-19-Data/master/json/DXYArea-TimeSeries.json",
-        cache: true,
-        dataType: "json",
-        complete: function (data) {
-
-            var regions = {};
-
-            data.responseJSON.forEach(function (regionSnapshot, idx) {
-                if (regionSnapshot.countryEnglishName &&
-                    regionSnapshot.provinceEnglishName == regionSnapshot.countryEnglishName &&
-                    regionSnapshot.continentEnglishName == "Europe") {
-                    if (!regions[regionSnapshot.countryEnglishName]) {
-
-                        regions[regionSnapshot.countryEnglishName] = {
-                            country: regionSnapshot.countryEnglishName,
-                            reachedThresholdAt: null,
-                            reachedThreshold: false,
-                            dayDiffToLowest: 0,
-                            snapshots: new Array(),
-                            fullCaseCount: 0,
-                            byDay: {}
-                        }
-                    };
-
-                    var region = regions[regionSnapshot.countryEnglishName];
-
-                    region.snapshots.push(regionSnapshot);
-
-                    if (regionSnapshot.confirmedCount >= threshold) {
-                        region.reachedThreshold = true;
-                        if (region.reachedThresholdAt == null ||
-                            region.reachedThresholdAt > new Date(regionSnapshot.updateTime)) {
-
-                            var updateTimeDate = new Date(regionSnapshot.updateTime);
-
-                            region.reachedThresholdAt = updateTimeDate;
-
-                            if (lowestDate == null ||
-                                lowestDate > updateTimeDate) {
-                                lowestDate = updateTimeDate;
-                            }
-                        }
-
-                        if (region.fullCaseCount < regionSnapshot.confirmedCount) {
-                            region.fullCaseCount = regionSnapshot.confirmedCount;
-                        }
-                    }
-                }
-
-            });
-
-            Object.keys(regions).forEach(function (country) {
-                var region = regions[country];
-                region.dayDiffToLowest = Math.round((region.reachedThresholdAt - lowestDate) / (1000 * 60 * 60 * 24));
-
-                if (region.reachedThreshold) {
-                    region.snapshots.sort(function (a, b) {
-                        return a.updateTime - b.updateTime;
-                    });
-
-                    region.snapshots.forEach(function (snapshot) {
-                        var date = new Date(snapshot.updateTime);
-                        var dateFormatted = date.getFullYear() + '/' + ("0" + (date.getMonth() + 1)).slice(-2) + '/' + ("0" + date.getDate()).slice(-2);
-
-                        if (!region.byDay[dateFormatted]) {
-                            region.byDay[dateFormatted] = snapshot.confirmedCount;
-                        }
-
-                        if (region.byDay[dateFormatted] < snapshot.confirmedCount) {
-                            //console.log("overwritten " + country + "/" + dateFormatted + ":" + region.byDay[dateFormatted] + "->" + snapshot.confirmedCount);
-                            region.byDay[dateFormatted] = snapshot.confirmedCount;
-                        }
-                    });
-                    region.snapshots = null;
-                }
-            });
-            cb(regions, lowestDate, "cases");
         }
     });
 }
@@ -261,8 +196,9 @@ function loadIsaacLin(cb) {
 Highcharts.Point.prototype.tooltipFormatter = function (useHeader) {
     var point = this;
     var dataType = point.dataType == "cases" ? "confirmed cases" : "deaths";
+    var addedFromLast = point.addedFromLast == null ? "" : "new " + dataType + ": " + point.addedFromLast + "<br />";
     var realDate = point.real.getFullYear() + '/' + ("0" + (point.real.getMonth() + 1)).slice(-2) + '/' + ("0" + point.real.getDate()).slice(-2);
-    return "<b>" + point.region.country + " </b> | Day " + point.daysSinceStart + "<br/>" + point.y + " " + dataType + "<br />Offset: " + point.region.dayDiffToLowest + " days<br/>" + realDate;
+    return "<b>" + point.region.country + " </b> | Day " + point.daysSinceStart + "<br/>" + point.y + " " + dataType + "<br />" + addedFromLast + "Offset: " + point.region.dayDiffToLowest + " days<br/>" + realDate;
 }
 
 // Return array of string values, or NULL if CSV string not well formed.
@@ -312,10 +248,18 @@ function getChartOptions(lowestDate, series) {
                 align: 'left',
                 formatter: function () {
                     return "";
-                    var oCorrectedDate = moment.utc(this.value).add(15, 'minutes').local().format("HH:mm");
-                    return oCorrectedDate;
                 }
-            }
+            },
+            plotLines: [{
+                color: 'black',
+                value: lowestDate,
+                width: 1,
+                label: {
+                    formatter: function () {
+                        return "Threshold";
+                    }
+                }
+            }]
         },
 
         legend: {
