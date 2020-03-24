@@ -12,7 +12,9 @@ $(function () {
 $('input[name=source]').change(function () {
     load();
 });
-
+$('input[name=scaling]').change(function () {
+    load();
+});
 $('.threshold-option').change(function () {
     load();
 });
@@ -230,6 +232,7 @@ function csvToArray(text) {
 };
 
 function getChartOptions(lowestDate, series) {
+    var scaling = $('input[type=radio][name=scaling]:checked').val();
     return {
         chart: {
             zoomType: "xy",
@@ -238,6 +241,7 @@ function getChartOptions(lowestDate, series) {
             text: ''
         },
         yAxis: {
+            type: scaling,
             title: {
                 text: 'confirmed cases'
             }
