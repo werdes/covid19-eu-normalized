@@ -75,7 +75,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col align-self-center">
+            <div class="col align-self-top pt-3">
                 <div class="input-group mb-2">
                     <div class="input-group-prepend option-prepend">
                         <span class="input-group-text">Threshold confirmed cases</span>
@@ -105,7 +105,9 @@
                         class="form-control threshold-option"
                         name="days-before-threshold">
                 </div>
-                <div class="input-group btn-group btn-group-toggle"
+            </div>
+            <div class="col align-self-top pt-3">
+                <div class="input-group mb-2 btn-group btn-group-toggle"
                     data-toggle="buttons">
                     <div class="input-group-prepend">
                         <span class="input-group-text">Scaling</span>
@@ -123,6 +125,27 @@
                             name="scaling"
                             id="scaling-logarithmic"
                             value="logarithmic"> Logarithmic
+                    </label>
+
+                </div>
+                <div class="input-group mb-2 btn-group btn-group-toggle"
+                    data-toggle="buttons">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text">Sorting</span>
+                    </div>
+
+                    <label class="btn btn-info">
+                        <input type="radio"
+                            name="sorting"
+                            id="sorting-value"
+                            value="value"
+                            checked> Value
+                    </label>
+                    <label class="btn btn-info">
+                        <input type="radio"
+                            name="sorting"
+                            id="sorting-alphabetical"
+                            value="alphabetical"> Alphabetical
                     </label>
 
                 </div>

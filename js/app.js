@@ -15,6 +15,9 @@ $('input[name=source]').change(function () {
 $('input[name=scaling]').change(function () {
     load();
 });
+$('input[name=sorting]').change(function () {
+    load();
+});
 $('.threshold-option').change(function () {
     load();
 });
@@ -41,6 +44,7 @@ function displayData(regions, lowestDate, dataType) {
     var minDate = new Date();
     var regionsSorted = [];
     var daysBeforeThreshold = parseInt($('#field-days-before-threshold').val());
+    var sorting = $('input[type=radio][name=sorting]:checked').val();
 
     minDate.setDate(lowestDate.getDate() - daysBeforeThreshold);
     console.log(lowestDate + " -> " + minDate);
@@ -50,6 +54,7 @@ function displayData(regions, lowestDate, dataType) {
     });
 
     regionsSorted.sort(function (a, b) {
+        if (sorting == 'alphabetical') return a.country.replace("\"", "").localeCompare(b.country.replace("\"", ""));
         return b.fullCaseCount - a.fullCaseCount;
     });
 
@@ -86,13 +91,14 @@ function displayData(regions, lowestDate, dataType) {
 
             series.push({
                 name: region.country,
+                color: region.country.toColor(),
                 data: points
             });
         }
     });
     $('#loading-indicator').addClass("d-none");
 
-    Highcharts.chart('chart', getChartOptions(lowestDate, series));
+    Highcharts.chart('chart', getChartOptions(lowestDate, series, dataType));
 }
 
 function loadJHCSSEConfirmed(cb) {
@@ -231,8 +237,9 @@ function csvToArray(text) {
     return r;
 };
 
-function getChartOptions(lowestDate, series) {
+function getChartOptions(lowestDate, series, dataType) {
     var scaling = $('input[type=radio][name=scaling]:checked').val();
+    dataType = dataType == "cases" ? "Confirmed cases" : "Deaths";
     return {
         chart: {
             zoomType: "xy",
@@ -243,7 +250,7 @@ function getChartOptions(lowestDate, series) {
         yAxis: {
             type: scaling,
             title: {
-                text: 'confirmed cases'
+                text: dataType
             }
         },
         xAxis: {
@@ -302,4 +309,17 @@ function getChartOptions(lowestDate, series) {
             }]
         }
     }
+}
+
+String.prototype.toColor = function () {
+    var hash = 0;
+    for (var i = 0; i < this.length; i++) {
+        hash = this.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    var colour = '#';
+    for (var i = 0; i < 3; i++) {
+        var value = (hash >> (i * 8)) & 0xFF;
+        colour += ('00' + value.toString(16)).substr(-2);
+    }
+    return colour;
 }
