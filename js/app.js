@@ -9,15 +9,10 @@ $(function () {
     load();
 });
 
-$('input[name=source]').change(function () {
+$('input[name=source], input[name=source-value], input[name=scaling], input[name=sorting]').change(function () {
     load();
 });
-$('input[name=scaling]').change(function () {
-    load();
-});
-$('input[name=sorting]').change(function () {
-    load();
-});
+
 $('.threshold-option').change(function () {
     load();
 });
@@ -30,10 +25,10 @@ function load() {
     $('#days-before-threshold').text($('#field-days-before-threshold').val());
 
     switch ($('input[name=source]:checked').val()) {
-        case 'john-hopkins-csse-confirmed':
+        case 'johns-hopkins-csse-confirmed':
             loadJHCSSEConfirmed(displayData);
             break;
-        case 'john-hopkins-csse-deaths':
+        case 'johns-hopkins-csse-deaths':
             loadJHCSSEDeaths(displayData);
             break;
     }
@@ -45,6 +40,7 @@ function displayData(regions, lowestDate, dataType) {
     var regionsSorted = [];
     var daysBeforeThreshold = parseInt($('#field-days-before-threshold').val());
     var sorting = $('input[type=radio][name=sorting]:checked').val();
+    var sourceValue = $('input[type=radio][name=source-value]:checked').val();
 
     minDate.setDate(lowestDate.getDate() - daysBeforeThreshold);
     console.log(lowestDate + " -> " + minDate);
@@ -81,8 +77,9 @@ function displayData(regions, lowestDate, dataType) {
                         daysSinceStart: daysSinceStart,
                         region: region,
                         dataType: dataType,
-                        y: region.byDay[day],
-                        addedFromLast: addedFromLast
+                        y: sourceValue == "total" ? region.byDay[day] : addedFromLast,
+                        addedFromLast: addedFromLast,
+                        total: region.byDay[day]
                     });
                 }
 
@@ -140,30 +137,32 @@ function loadJHCSSE(cb, url, dataType, threshold) {
             cellData.forEach(function (cells, idx) {
 
                 var countryName = cells[1];
-                if (!regions[countryName]) {
-                    regions[countryName] = {
-                        country: countryName,
-                        reachedThresholdAt: null,
-                        reachedThreshold: false,
-                        dayDiffToLowest: 0,
-                        fullCaseCount: 0,
-                        byDay: {}
+                if (countryName != undefined) {
+                    if (!regions[countryName]) {
+                        regions[countryName] = {
+                            country: countryName,
+                            reachedThresholdAt: null,
+                            reachedThreshold: false,
+                            dayDiffToLowest: 0,
+                            fullCaseCount: 0,
+                            byDay: {}
+                        }
                     }
+
+                    var region = regions[countryName];
+
+                    // if (region.country != "France") return;
+
+                    Object.keys(dateIdxs).forEach(function (date) {
+                        var lineDateIdx = dateIdxs[date];
+                        var value = parseInt(cells[lineDateIdx]);
+
+                        if (!region.byDay[date])
+                            region.byDay[date] = 0;
+
+                        region.byDay[date] += value;
+                    });
                 }
-
-                var region = regions[countryName];
-
-                // if (region.country != "France") return;
-
-                Object.keys(dateIdxs).forEach(function (date) {
-                    var lineDateIdx = dateIdxs[date];
-                    var value = parseInt(cells[lineDateIdx]);
-
-                    if (!region.byDay[date])
-                        region.byDay[date] = 0;
-
-                    region.byDay[date] += value;
-                });
             });
 
             Object.keys(regions).forEach(function (countryName) {
@@ -206,7 +205,7 @@ Highcharts.Point.prototype.tooltipFormatter = function (useHeader) {
     var dataType = point.dataType == "cases" ? "confirmed cases" : "deaths";
     var addedFromLast = point.addedFromLast == null ? "" : "new " + dataType + ": " + point.addedFromLast + "<br />";
     var realDate = point.real.getFullYear() + '/' + ("0" + (point.real.getMonth() + 1)).slice(-2) + '/' + ("0" + point.real.getDate()).slice(-2);
-    return "<b>" + point.region.country + " </b> | Day " + point.daysSinceStart + "<br/>" + point.y + " " + dataType + "<br />" + addedFromLast + "Offset: " + point.region.dayDiffToLowest + " days<br/>" + realDate;
+    return "<b>" + point.region.country + " </b> | Day " + point.daysSinceStart + "<br/>" + point.total + " " + dataType + "<br />" + addedFromLast + "Offset: " + point.region.dayDiffToLowest + " days<br/>" + realDate;
 }
 
 // Return array of string values, or NULL if CSV string not well formed.
@@ -236,6 +235,29 @@ function csvToArray(text) {
 
     return r;
 };
+
+$('#toggle-series').click(function () {
+    var status = $(this).attr('data-hide');
+    var chart = $('#chart').highcharts();
+    if (status == "hide") {
+        $.each(chart.series, function (i, series) {
+            console.log(series.name);
+            series.setVisible(false, false);
+        });
+
+        $(this).attr('data-hide', 'show');
+        $(this).text('Show all');
+    } else {
+        $.each(chart.series, function (i, series) {
+            console.log(series.name);
+            series.setVisible(true, false);
+        });
+
+        $(this).attr('data-hide', 'hide');
+        $(this).text('Hide all');
+    }
+    chart.redraw();
+})
 
 function getChartOptions(lowestDate, series, dataType) {
     var scaling = $('input[type=radio][name=scaling]:checked').val();
