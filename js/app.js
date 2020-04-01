@@ -34,15 +34,15 @@ function load() {
     }
 }
 
-function displayData(regions, lowestDate, dataType) {
+function displayData(regions, lowestDate, lowestThreshold, dataType) {
     var series = new Array();
-    var minDate = new Date();
+    var minDate = null;
     var regionsSorted = [];
     var daysBeforeThreshold = parseInt($('#field-days-before-threshold').val());
     var sorting = $('input[type=radio][name=sorting]:checked').val();
     var sourceValue = $('input[type=radio][name=source-value]:checked').val();
 
-    minDate.setDate(lowestDate.getDate() - daysBeforeThreshold);
+    minDate = lowestDate.subtract(daysBeforeThreshold, 'days');
     console.log(lowestDate + " -> " + minDate);
 
     Object.keys(regions).forEach(function (country) {
@@ -63,17 +63,16 @@ function displayData(regions, lowestDate, dataType) {
             var points = new Array();
             var lastValue = null;
             Object.keys(region.byDay).forEach(function (day) {
-                var daysSinceStart = 1 + Math.round(((new Date(day)) - region.reachedThresholdAt) / (1000 * 60 * 60 * 24));
-
-                var dateCorrected = new Date(day);
-                dateCorrected.setDate(dateCorrected.getDate() - region.dayDiffToLowest);
+                var dayObj = moment(day, "YYYY/MM/DD");
+                var daysSinceStart = moment.duration(dayObj.diff(region.reachedThresholdAt, 'days'));
+                var dateCorrected = dayObj.subtract(region.dayDiffToLowest, "days");
 
                 var addedFromLast = lastValue == null ? null : region.byDay[day] - lastValue;
 
                 if (dateCorrected >= minDate) {
                     points.push({
-                        x: dateCorrected,
-                        real: new Date(day),
+                        x: dateCorrected.toDate(),
+                        real: dayObj,
                         daysSinceStart: daysSinceStart,
                         region: region,
                         dataType: dataType,
@@ -95,7 +94,7 @@ function displayData(regions, lowestDate, dataType) {
     });
     $('#loading-indicator').addClass("d-none");
 
-    Highcharts.chart('chart', getChartOptions(lowestDate, series, dataType));
+    Highcharts.chart('chart', getChartOptions(lowestThreshold, series, dataType));
 }
 
 function loadJHCSSEConfirmed(cb) {
@@ -112,6 +111,7 @@ function loadJHCSSEDeaths(cb) {
 
 function loadJHCSSE(cb, url, dataType, threshold) {
     var lowestDate = null;
+    var lowestThreshold = null;
     var dateRegex = "([0-9]{1,2}\/[0-9]{1,2}\/[0-9]{1,2})\\w+";
     var regions = {};
 
@@ -126,8 +126,8 @@ function loadJHCSSE(cb, url, dataType, threshold) {
 
             headlineCells.forEach(function (headlineCell, headlineCellIdx) {
                 if (headlineCell.match(dateRegex)) {
-                    var date = new Date(headlineCell);
-                    var dateFormatted = date.getFullYear() + '/' + ("0" + (date.getMonth() + 1)).slice(-2) + '/' + ("0" + date.getDate()).slice(-2);
+                    var date = moment(headlineCell);
+                    var dateFormatted = date.format("YYYY/MM/DD");
                     dateIdxs[dateFormatted] = headlineCellIdx;
                 }
             });
@@ -168,7 +168,7 @@ function loadJHCSSE(cb, url, dataType, threshold) {
             Object.keys(regions).forEach(function (countryName) {
                 var region = regions[countryName];
                 Object.keys(region.byDay).forEach(function (date) {
-                    var dateObj = new Date(date);
+                    var dateObj = moment(date, "YYYY/MM/DD");
 
                     if (region.byDay[date] >= threshold) {
                         if (!region.reachedThreshold) {
@@ -180,13 +180,16 @@ function loadJHCSSE(cb, url, dataType, threshold) {
                         if (region.byDay[date] > region.fullCaseCount) {
                             region.fullCaseCount = region.byDay[date];
                         }
-                        if (lowestDate == null ||
-                            lowestDate < dateObj) {
-                            lowestDate = dateObj;
+                        if (lowestThreshold == null ||
+                            lowestThreshold > dateObj) {
+                            lowestThreshold = dateObj;
                         }
 
                     }
-
+                    if (lowestDate == null ||
+                        lowestDate > dateObj) {
+                        lowestDate = dateObj;
+                    }
                 });
             });
 
@@ -195,7 +198,9 @@ function loadJHCSSE(cb, url, dataType, threshold) {
                 region.dayDiffToLowest = Math.round((region.reachedThresholdAt - lowestDate) / (1000 * 60 * 60 * 24));
             });
 
-            cb(regions, lowestDate, dataType);
+            $('body').append('<textarea>' + JSON.stringify(regions) + '</textarea>');
+
+            cb(regions, lowestDate, lowestThreshold, dataType);
         }
     });
 }
@@ -204,7 +209,7 @@ Highcharts.Point.prototype.tooltipFormatter = function (useHeader) {
     var point = this;
     var dataType = point.dataType == "cases" ? "confirmed cases" : "deaths";
     var addedFromLast = point.addedFromLast == null ? "" : "new " + dataType + ": " + point.addedFromLast + "<br />";
-    var realDate = point.real.getFullYear() + '/' + ("0" + (point.real.getMonth() + 1)).slice(-2) + '/' + ("0" + point.real.getDate()).slice(-2);
+    var realDate = point.real.format("YYYY/MM/DD");
     return "<b>" + point.region.country + " </b> | Day " + point.daysSinceStart + "<br/>" + point.total + " " + dataType + "<br />" + addedFromLast + "Offset: " + point.region.dayDiffToLowest + " days<br/>" + realDate;
 }
 
@@ -285,7 +290,7 @@ function getChartOptions(lowestDate, series, dataType) {
             },
             plotLines: [{
                 color: 'black',
-                value: lowestDate,
+                value: lowestDate.toDate(),
                 width: 1,
                 label: {
                     formatter: function () {
@@ -311,7 +316,7 @@ function getChartOptions(lowestDate, series, dataType) {
                 label: {
                     connectorAllowed: false
                 },
-                pointStart: lowestDate
+                pointStart: lowestDate.toDate()
             }
         },
 
