@@ -51,7 +51,7 @@
                             id="threshold-cases"> </span> cases or <span id="threshold-deaths"></span> deaths.</p>
 
                     <div class="row">
-                        <div class="col-8">
+                        <div class="col">
                             <div id="source-selector"
                                 class="input-group mb-2 btn-group btn-group-toggle"
                                 data-toggle="buttons">
@@ -63,13 +63,13 @@
                                         name="source"
                                         id="source-johns-hopkins-csse-confirmed"
                                         value="johns-hopkins-csse-confirmed"
-                                        checked> JHU CSSE confirmed cases
+                                        checked>Confirmed cases
                                 </label>
                                 <label class="btn btn-secondary">
                                     <input type="radio"
                                         name="source"
                                         id="source-johns-hopkins-csse-deaths"
-                                        value="johns-hopkins-csse-deaths"> JHU CSSE deaths
+                                        value="johns-hopkins-csse-deaths">Deaths
                                 </label>
                             </div>
                         </div>
@@ -92,6 +92,28 @@
                                         name="source-value"
                                         id="source-value-new"
                                         value="new"> New
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div id="source-scaling-selector"
+                                class="input-group mb-2 btn-group btn-group-toggle"
+                                data-toggle="buttons">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text">Scaling</span>
+                                </div>
+                                <label class="btn btn-secondary">
+                                    <input type="radio"
+                                        name="source-scaling"
+                                        id="source-scaling-total"
+                                        value="total"
+                                        checked>Total
+                                </label>
+                                <label class="btn btn-secondary">
+                                    <input type="radio"
+                                        name="source-scaling"
+                                        id="source-scaling-relative"
+                                        value="relative">By population
                                 </label>
                             </div>
                         </div>
@@ -215,7 +237,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment-with-locales.min.js"
         integrity="sha256-AdQN98MVZs44Eq2yTwtoKufhnU+uZ7v2kXnD5vqzZVo="
         crossorigin="anonymous"></script>
-    <script src="js/app.js"
+    <script src="js/app.min.js"
         type="text/javascript"></script>
 </body>
 
